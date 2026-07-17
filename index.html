@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Show — Sortie équestre immersive</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="loader">
+    <div class="loader-content">
+      <img class="loader-logo" alt="VR Show" hidden>
+      <p id="loader-status" class="loader-status">Initialisation…</p>
+      <div class="loader-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="loader-fill" class="loader-bar__fill"></div>
+      </div>
+      <p id="loader-percent" class="loader-percent">0%</p>
+    </div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+  <div id="env-overlay" aria-hidden="true"></div>
+
+  <div id="ui" class="ui">
+    <header class="ui-header">
+      <div class="chip chip--left">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        ARÈNE – SOIR D'ÉTÉ
+      </div>
+      <div class="ui-header__center">
+        <img id="logo" alt="VR Show" class="ui-logo" hidden>
+      </div>
+      <div class="chip chip--right">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        19:45
+      </div>
+    </header>
+
+    <section class="ui-hero-text">
+      <h1>CHOISISSEZ VOTRE IMMERSION</h1>
+      <p class="ui-subtitle">EXPÉRIENCE VR 360° · Glissez pour explorer</p>
+    </section>
+
+    <h2 class="ui-section-title">SÉLECTIONNEZ VOTRE VUE</h2>
+
+    <div class="cards" id="cards">
+      <button class="card selected" type="button" data-id="casque-pov">
+        <div class="card__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2c3 0 5 2 5 5v2H7V7c0-3 2-5 5-5z"/><path d="M5 9h14v3c0 4-3 7-7 7s-7-3-7-7V9z"/></svg>
+        </div>
+        <span class="card__title">POV CAVALIER</span>
+        <div class="card__screen">
+          <img class="card__poster" src="/assets/casque-pov.png" alt="POV Cavalier">
+          <video class="card__video" src="/assets/videos/casque-pov.mp4" muted loop playsinline preload="metadata"></video>
+        </div>
+        <div class="card__footer">
+          <span>Vue à la 1ère personne</span>
+          <span class="card__footer-sub">Immersion totale</span>
+        </div>
+        <div class="card__check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></div>
+      </button>
+
+      <button class="card" type="button" data-id="perche">
+        <div class="card__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="17" cy="8" r="1.2" fill="currentColor"/><circle cx="17" cy="16" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/><circle cx="7" cy="16" r="1.2" fill="currentColor"/><circle cx="7" cy="8" r="1.2" fill="currentColor"/></svg>
+        </div>
+        <span class="card__title">VUE PERCHE</span>
+        <div class="card__screen">
+          <img class="card__poster" src="/assets/perche.png" alt="Vue perche">
+          <video class="card__video" src="/assets/videos/perche.mp4" muted loop playsinline preload="metadata"></video>
+        </div>
+        <div class="card__footer">
+          <span>Caméra sur perche</span>
+          <span class="card__footer-sub">Suivi dynamique</span>
+        </div>
+        <div class="card__check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></div>
+      </button>
+
+      <button class="card" type="button" data-id="drone">
+        <div class="card__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 12m-2 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        </div>
+        <span class="card__title">VUE DRONE</span>
+        <div class="card__screen">
+          <img class="card__poster" src="/assets/drone.png" alt="Vue drone">
+          <video class="card__video" src="/assets/videos/drone.mp4" muted loop playsinline preload="metadata"></video>
+        </div>
+        <div class="card__footer">
+          <span>Vue aérienne</span>
+          <span class="card__footer-sub">Perspective globale</span>
+        </div>
+        <div class="card__check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></div>
+      </button>
+    </div>
+
+    <nav class="bottom-bar">
+      <button class="bottom-bar__side" type="button" id="btn-infos">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/></svg>
+        INFOS
+      </button>
+      <button class="launch-btn" type="button" id="launch-btn" aria-label="Lancer l'expérience VR">
+        <span class="launch-btn__ring"></span>
+        <span class="launch-btn__inner">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </span>
+        <span class="launch-btn__label">LANCER</span>
+      </button>
+      <button class="bottom-bar__side" type="button" id="btn-settings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        RÉGLAGES
+      </button>
+    </nav>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
