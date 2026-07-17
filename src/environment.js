@@ -254,7 +254,7 @@ export function createEnvironment(scene, { onReady, videoEl, mobile = false } = 
     panoramaTexture = tex;
     ensurePanoramaSphere();
     onReady?.();
-  });
+  }, undefined, () => onReady?.());
 
   return {
     primeVideo,

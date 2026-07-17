@@ -106,13 +106,10 @@ uiPanel.position.set(0, UI_PANEL_Y, UI_PANEL_Z);
 uiPanel.scale.setScalar(UI_SCALE);
 scene.add(uiPanel);
 
-if (mobile) {
-  updateMobileUiScale();
-}
-
 let lon = 0;
 let lat = 0;
 let isPresenting = false;
+let isImmersion = false;
 let drag = null;
 let gyroActive = false;
 
@@ -143,8 +140,6 @@ function rotateView(deltaLon, deltaLat) {
   }
   setView(lon - deltaLon, lat + deltaLat);
 }
-
-let isImmersion = false;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));

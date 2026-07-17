@@ -11,6 +11,7 @@ const STEPS = [
 ];
 
 const MIN_DURATION_MS = 3200;
+const ASSETS_TIMEOUT_MS = 15000;
 
 let assetsReadyResolve;
 export const assetsReady = new Promise((resolve) => {
@@ -72,7 +73,10 @@ export async function runLoadingScreen() {
     if (elapsed >= MIN_DURATION_MS) break;
   }
 
-  await Promise.all([logoPromise, assetsReady]);
+  await Promise.all([
+    logoPromise.catch(() => {}),
+    Promise.race([assetsReady, sleep(ASSETS_TIMEOUT_MS)]),
+  ]);
 
   for (let p = visualProgress; p <= 100; p += 2) {
     updateProgress(els, p, currentLabel(p));
