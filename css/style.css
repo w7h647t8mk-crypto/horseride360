@@ -568,7 +568,7 @@ body.in-vr .ui {
 
 /* ── Mobile: panneau 3D compact (même comportement que desktop) ──────────── */
 body.is-mobile .ui.ui--compact {
-  width: 700px;
+  width: 840px;
   padding: 20px 22px 22px;
   border-radius: 24px;
 }
