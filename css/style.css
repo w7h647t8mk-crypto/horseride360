@@ -683,7 +683,7 @@ body.is-mobile .ui.ui--mobile-overlay {
   padding:
     calc(10px + env(safe-area-inset-top))
     14px
-    calc(14px + env(safe-area-inset-bottom));
+    calc(100px + env(safe-area-inset-bottom));
   transform: none !important;
   touch-action: manipulation;
 }
@@ -780,12 +780,14 @@ body.is-mobile .card.is-previewing {
 }
 
 body.is-mobile .bottom-bar {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  width: 100%;
-  margin-top: 20px;
-  padding: 10px 0 4px;
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 15;
+  width: auto;
+  margin-top: 0;
+  padding: 0;
   gap: 0;
   background: transparent;
   border: none;
@@ -796,6 +798,15 @@ body.is-mobile .bottom-bar {
 
 body.is-mobile .bottom-bar__side {
   display: none;
+}
+
+body.is-mobile .card.selected .card__footer-sub::after {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  color: rgba(255, 120, 120, 0.95);
+  content: 'Double-tap pour lancer';
 }
 
 body.is-mobile .launch-btn {

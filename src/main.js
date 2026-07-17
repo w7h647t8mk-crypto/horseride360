@@ -69,7 +69,9 @@ if (mobile) {
   document.body.classList.add('is-mobile');
   uiEl.classList.add('ui--compact');
   const subtitle = document.querySelector('.ui-subtitle');
-  if (subtitle) subtitle.textContent = 'EXPÉRIENCE VR 360° · Inclinez ou glissez pour explorer';
+  if (subtitle) {
+    subtitle.textContent = 'EXPÉRIENCE VR 360° · Double-tap sur la vue choisie pour lancer';
+  }
 }
 
 loadTransparentLogo(publicUrl('assets/logo.png')).then(({ dataUrl }) => {

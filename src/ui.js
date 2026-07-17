@@ -67,6 +67,44 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
   }
 
   cards.forEach((card) => {
+    if (mobile) {
+      let lastTap = { id: null, time: 0 };
+      const DOUBLE_TAP_MS = 450;
+
+      card.addEventListener('touchstart', () => {
+        cards.forEach((other) => {
+          if (other !== card) stopPreview(other);
+        });
+        playPreview(card);
+      }, { passive: true });
+
+      card.addEventListener('touchend', (e) => {
+        const id = card.dataset.id;
+        const now = Date.now();
+        const isDoubleTap =
+          id === selectedId &&
+          id === lastTap.id &&
+          now - lastTap.time < DOUBLE_TAP_MS;
+
+        lastTap = { id, time: now };
+
+        if (isDoubleTap) {
+          e.preventDefault();
+          handleLaunch();
+          return;
+        }
+
+        if (id !== selectedId) {
+          playCue('select');
+          selectViewpoint(id);
+        } else {
+          playCue('press');
+        }
+      }, { passive: true });
+
+      return;
+    }
+
     card.addEventListener('click', () => {
       const id = card.dataset.id;
       playCue(id === selectedId ? 'press' : 'select');
@@ -85,15 +123,6 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
     });
 
     card.addEventListener('mouseleave', () => stopPreview(card));
-
-    if (mobile) {
-      card.addEventListener('touchstart', () => {
-        cards.forEach((other) => {
-          if (other !== card) stopPreview(other);
-        });
-        playPreview(card);
-      }, { passive: true });
-    }
   });
 
   function stopAllPreviews() {
@@ -107,7 +136,8 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
   }
 
   if (mobile) {
-    launchBtn.addEventListener('touchend', (e) => {
+    document.body.classList.add('has-mobile-launch');
+    launchBtn?.addEventListener('touchend', (e) => {
       e.preventDefault();
       e.stopPropagation();
       handleLaunch();
