@@ -11,7 +11,8 @@ const STEPS = [
 ];
 
 const MIN_DURATION_MS = 3200;
-const ASSETS_TIMEOUT_MS = 15000;
+const ASSETS_TIMEOUT_MS = 8000;
+const MOBILE_MIN_DURATION_MS = 1200;
 
 let assetsReadyResolve;
 export const assetsReady = new Promise((resolve) => {
@@ -54,9 +55,19 @@ export async function runLoadingScreen() {
     logo: document.querySelector('.loader-logo'),
   };
 
+  if (!els.fill || !els.percent || !els.status) {
+    loaderEl?.classList.add('hidden');
+    return;
+  }
+
+  const mobile = window.matchMedia('(max-width: 900px)').matches;
+  const minDuration = mobile ? MOBILE_MIN_DURATION_MS : MIN_DURATION_MS;
+
   const logoPromise = loadTransparentLogo(publicUrl('assets/logo.png')).then(({ dataUrl }) => {
-    els.logo.src = dataUrl;
-    els.logo.removeAttribute('hidden');
+    if (els.logo) {
+      els.logo.src = dataUrl;
+      els.logo.removeAttribute('hidden');
+    }
   });
 
   const start = performance.now();
@@ -64,13 +75,13 @@ export async function runLoadingScreen() {
 
   while (true) {
     const elapsed = performance.now() - start;
-    const timeRatio = Math.min(1, elapsed / MIN_DURATION_MS);
+    const timeRatio = Math.min(1, elapsed / minDuration);
     const target = easeOutCubic(timeRatio) * 96;
     visualProgress += (target - visualProgress) * 0.12;
     updateProgress(els, visualProgress, currentLabel(visualProgress));
     await sleep(32);
 
-    if (elapsed >= MIN_DURATION_MS) break;
+    if (elapsed >= minDuration) break;
   }
 
   await Promise.all([

@@ -1,23 +1,23 @@
 import { playCue, setSoundEnabled, isSoundEnabled } from './sounds.js';
-import { applyVideoCrossOrigin, videoUrl, REMOTE_VIDEOS } from './paths.js';
+import { applyVideoCrossOrigin, publicUrl, REMOTE_VIDEOS } from './paths.js';
 
 export const VIEWPOINTS = {
   'casque-pov': {
     id: 'casque-pov',
     label: 'POV Cavalier',
-    preview: videoUrl('casque-pov-preview.mp4'),
+    preview: publicUrl('assets/videos/casque-pov-preview.mp4'),
     immersion: REMOTE_VIDEOS['casque-pov'],
   },
   perche: {
     id: 'perche',
     label: 'Vue Perche',
-    preview: videoUrl('perche-preview.mp4'),
+    preview: publicUrl('assets/videos/perche-preview.mp4'),
     immersion: REMOTE_VIDEOS.perche,
   },
   drone: {
     id: 'drone',
     label: 'Vue Drone',
-    preview: videoUrl('drone.mp4'),
+    preview: publicUrl('assets/videos/drone.mp4'),
     immersion: REMOTE_VIDEOS.drone,
   },
 };
@@ -34,6 +34,10 @@ function playPreview(card) {
   const video = card.querySelector('.card__video');
   card.classList.add('is-previewing');
   if (!video) return;
+  if (!video.src && video.dataset.src) {
+    video.src = video.dataset.src;
+    applyVideoCrossOrigin(video, video.dataset.src);
+  }
   video.play().catch(() => {});
 }
 
@@ -49,8 +53,13 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
     const vp = VIEWPOINTS[card.dataset.id];
     const video = card.querySelector('.card__video');
     if (!video || !vp?.preview) return;
-    video.src = vp.preview;
-    applyVideoCrossOrigin(video, vp.preview);
+    if (mobile) {
+      video.preload = 'none';
+      video.dataset.src = vp.preview;
+    } else {
+      video.src = vp.preview;
+      applyVideoCrossOrigin(video, vp.preview);
+    }
   });
 
   function selectViewpoint(id) {

@@ -82,7 +82,7 @@ loadTransparentLogo(publicUrl('assets/logo.png')).then(({ dataUrl }) => {
   }
 });
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !mobile });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -239,7 +239,22 @@ environment = createEnvironment(scene, {
 applyCameraRotation();
 updateUiBillboard();
 
-runLoadingScreen();
+function startRenderLoop() {
+  renderer.setAnimationLoop(() => {
+    environment.tick();
+    renderer.render(scene, camera);
+    if (!isPresenting && !isImmersion) cssRenderer.render(scene, camera);
+  });
+}
+
+void runLoadingScreen()
+  .catch((err) => {
+    console.error('[VR Show] loader failed', err);
+    document.getElementById('loader')?.classList.add('hidden');
+  })
+  .finally(() => {
+    startRenderLoop();
+  });
 
 if (mobile) {
   void resolveMobileImmersionUrls();
@@ -403,12 +418,6 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   cssRenderer.setSize(window.innerWidth, window.innerHeight);
   updateMobileUiScale();
-});
-
-renderer.setAnimationLoop(() => {
-  environment.tick();
-  renderer.render(scene, camera);
-  if (!isPresenting && !isImmersion) cssRenderer.render(scene, camera);
 });
 
 window.VRShow = {
