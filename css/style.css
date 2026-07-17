@@ -663,9 +663,41 @@ body.in-immersion #ui.is-exiting {
   display: none !important;
 }
 
+/* ── Mobile: overlay 2D natif (iOS — tap fiable pour vidéo) ───────────── */
+body.is-mobile #css3d-root {
+  display: none !important;
+}
+
+body.is-mobile .ui.ui--mobile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  width: 100%;
+  max-width: 100vw;
+  height: 100%;
+  max-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0;
+  padding:
+    calc(10px + env(safe-area-inset-top))
+    14px
+    calc(14px + env(safe-area-inset-bottom));
+  transform: none !important;
+  touch-action: manipulation;
+}
+
+body.is-mobile .launch-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ── Mobile: proportions type mockup (quasi plein écran) ───────────────── */
-body.is-mobile .ui.ui--compact {
-  width: 1120px;
+body.is-mobile .ui.ui--compact,
+body.is-mobile .ui.ui--mobile-overlay {
+  width: 100%;
+  max-width: 100%;
   padding: 28px 36px 30px;
   border-radius: 28px;
   transform-origin: 50% 50%;
@@ -748,32 +780,69 @@ body.is-mobile .card.is-previewing {
 }
 
 body.is-mobile .bottom-bar {
-  margin-top: 18px;
-  gap: 20px;
-  padding: 8px 18px;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  width: 100%;
+  margin-top: 20px;
+  padding: 10px 0 4px;
+  gap: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body.is-mobile .bottom-bar__side {
+  display: none;
 }
 
 body.is-mobile .launch-btn {
-  margin-top: -16px;
-}
-
-body.is-mobile .launch-btn__inner {
-  width: 46px;
-  height: 46px;
-}
-
-body.is-mobile .launch-btn__inner svg {
-  width: 20px;
-  height: 20px;
+  width: 100%;
+  margin-top: 0;
+  flex-direction: row;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px 24px;
+  border-radius: 999px;
+  background: linear-gradient(145deg, #ff5252, #b71c1c);
+  box-shadow:
+    0 8px 28px rgba(229, 57, 53, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 body.is-mobile .launch-btn__ring {
-  width: 60px;
-  height: 60px;
+  display: none;
+}
+
+body.is-mobile .launch-btn__inner {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+
+body.is-mobile .launch-btn__inner svg {
+  width: 22px;
+  height: 22px;
 }
 
 body.is-mobile .launch-btn__label {
-  font-size: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #fff;
+}
+
+body.is-mobile .launch-btn:active {
+  transform: scale(0.98);
+}
+
+body.is-mobile .launch-btn__label::after {
+  content: ' L\'IMMERSION';
+  letter-spacing: 0.12em;
 }
 
 body.is-mobile .bottom-bar__side {

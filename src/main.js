@@ -31,7 +31,8 @@ for (const [id, vp] of Object.entries(VIEWPOINTS)) {
 let environment = null;
 
 function preloadImmersionForViewpoint(viewpointId) {
-  if (!mobile || !environment) return;
+  // Pas de préchargement mobile : fichiers lourds + risque de bloquer play() iOS.
+  if (mobile || !environment) return;
   const url = VIEWPOINTS[viewpointId]?.immersion;
   if (url) environment.preloadVideo(url);
 }
@@ -98,10 +99,18 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 camera.position.set(0, 1.6, 0);
 scene.add(camera);
 
-const uiPanel = new CSS3DObject(uiEl);
-uiPanel.position.set(0, UI_PANEL_Y, UI_PANEL_Z);
-uiPanel.scale.setScalar(UI_SCALE);
-scene.add(uiPanel);
+let uiPanel = null;
+
+if (mobile) {
+  // Overlay 2D : iOS n'autorise play() que depuis un vrai tap HTML (pas CSS3D).
+  uiEl.classList.add('ui--mobile-overlay');
+  cssRenderer.domElement.style.display = 'none';
+} else {
+  uiPanel = new CSS3DObject(uiEl);
+  uiPanel.position.set(0, UI_PANEL_Y, UI_PANEL_Z);
+  uiPanel.scale.setScalar(UI_SCALE);
+  scene.add(uiPanel);
+}
 
 let lon = 0;
 let lat = 0;
@@ -152,7 +161,7 @@ async function enterImmersion(label) {
   uiEl.classList.add('is-exiting');
   await sleep(450);
   ui.hide();
-  uiPanel.visible = false;
+  if (uiPanel) uiPanel.visible = false;
   uiEl.classList.remove('is-exiting');
 }
 
@@ -163,12 +172,13 @@ async function exitImmersion() {
   document.body.classList.remove('in-immersion');
   immersionBar?.setAttribute('hidden', '');
   environment.stopVideo();
-  uiPanel.visible = true;
+  if (uiPanel) uiPanel.visible = true;
   ui.show();
   if (mobile && gyroBtn && !gyro.isListening()) gyroBtn.removeAttribute('hidden');
 }
 
 function updateUiBillboard() {
+  if (!uiPanel || mobile) return;
   uiPanel.lookAt(camera.position);
 }
 
@@ -317,7 +327,7 @@ setupWebXR(renderer, {
     document.body.classList.remove('is-looking');
     document.body.classList.add('in-vr');
     ui.hide();
-    uiPanel.visible = false;
+    if (uiPanel) uiPanel.visible = false;
     cssRenderer.domElement.style.display = 'none';
     gyroBtn?.setAttribute('hidden', '');
   },
@@ -325,8 +335,8 @@ setupWebXR(renderer, {
     isPresenting = false;
     document.body.classList.remove('in-vr');
     ui.show();
-    uiPanel.visible = true;
-    cssRenderer.domElement.style.display = '';
+    if (uiPanel) uiPanel.visible = true;
+    cssRenderer.domElement.style.display = mobile ? 'none' : '';
     if (mobile && gyroBtn && !gyro.isListening()) gyroBtn.removeAttribute('hidden');
     applyCameraRotation();
     updateUiBillboard();
@@ -405,9 +415,9 @@ window.addEventListener('resize', () => {
 
 renderer.setAnimationLoop(() => {
   environment.tick();
-  if (!isPresenting && !isImmersion) updateUiBillboard();
+  if (!isPresenting && !isImmersion && !mobile) updateUiBillboard();
   renderer.render(scene, camera);
-  if (!isPresenting && !isImmersion) cssRenderer.render(scene, camera);
+  if (!isPresenting && !isImmersion && !mobile) cssRenderer.render(scene, camera);
 });
 
 window.VRShow = {

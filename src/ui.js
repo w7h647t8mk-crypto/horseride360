@@ -100,48 +100,35 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
     cards.forEach(stopPreview);
   }
 
-  launchBtn.addEventListener('click', () => {
-    // iOS : libérer le décodeur vidéo + lancer play() avant tout son (geste utilisateur).
+  function handleLaunch() {
     stopAllPreviews();
     onLaunchVR?.(selectedId);
-    playCue('start');
-  });
+    setTimeout(() => playCue('start'), 0);
+  }
 
-  document.getElementById('btn-infos')?.addEventListener('click', () => {
-    playCue('info');
-    alert('VR Show — Sortie équestre immersive à 360°\n\nChoisissez un point de vue puis lancez l\'expérience VR.');
-  });
+  if (mobile) {
+    launchBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleLaunch();
+    }, { passive: false });
+  } else {
+    launchBtn.addEventListener('click', handleLaunch);
+  }
 
-  document.getElementById('btn-settings')?.addEventListener('click', async () => {
-    if (mobile && onToggleGyro) {
-      const soundOn = isSoundEnabled();
-      const gyroOn = isGyroEnabled?.() ?? false;
-      const choice = prompt(
-        `Réglages\n\n1 — Son : ${soundOn ? 'ON' : 'OFF'}\n2 — Gyroscope : ${gyroOn ? 'ON' : 'OFF'}\n\nEntrez 1 ou 2 pour basculer`,
-        ''
-      );
+  if (!mobile) {
+    document.getElementById('btn-infos')?.addEventListener('click', () => {
+      playCue('info');
+      alert('VR Show — Sortie équestre immersive à 360°\n\nChoisissez un point de vue puis lancez l\'expérience VR.');
+    });
 
-      if (choice === '1') {
-        const enabled = !soundOn;
-        setSoundEnabled(enabled);
-        playCue(enabled ? 'toggle-on' : 'toggle-off');
-      } else if (choice === '2') {
-        if (gyroOn) {
-          onToggleGyro();
-          playCue('toggle-off');
-          alert('Gyroscope désactivé.');
-        } else {
-          alert('Appuyez sur le bouton « Activer le gyroscope » en haut de l\'écran.');
-        }
-      }
-      return;
-    }
-
-    const enabled = !isSoundEnabled();
-    setSoundEnabled(enabled);
-    playCue(enabled ? 'toggle-on' : 'toggle-off');
-    alert(`Son ${enabled ? 'activé' : 'désactivé'}`);
-  });
+    document.getElementById('btn-settings')?.addEventListener('click', () => {
+      const enabled = !isSoundEnabled();
+      setSoundEnabled(enabled);
+      playCue(enabled ? 'toggle-on' : 'toggle-off');
+      alert(`Son ${enabled ? 'activé' : 'désactivé'}`);
+    });
+  }
 
   document.querySelectorAll('.bottom-bar__side, .launch-btn, .chip').forEach((el) => {
     el.addEventListener('mouseenter', () => playCue('hover', { volume: 0.25 }));

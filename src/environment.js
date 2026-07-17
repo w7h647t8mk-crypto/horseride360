@@ -3,7 +3,6 @@ import { publicUrl, applyVideoCrossOrigin } from './paths.js';
 
 const PANORAMA_URL = publicUrl('assets/panorama.png');
 const FADE_MS = 1400;
-const LOAD_TIMEOUT_MS = 60000;
 
 function resolveVideoUrl(url) {
   return new URL(url, window.location.href).href;
@@ -16,6 +15,7 @@ function videoMatchesUrl(video, url) {
 }
 
 export function createEnvironment(scene, { onReady, videoEl, mobile = false } = {}) {
+  const LOAD_TIMEOUT_MS = mobile ? 120000 : 60000;
   let panoramaTexture = null;
   let videoElement = videoEl ?? null;
   let videoTexture = null;
@@ -164,7 +164,13 @@ export function createEnvironment(scene, { onReady, videoEl, mobile = false } = 
     const video = getVideo();
     playUnlocked = true;
     setVideoSource(video, url);
-    return video.play().catch(() => undefined);
+    const attempt = video.play();
+    if (attempt?.catch) {
+      attempt.catch(() => {
+        if (video.readyState >= 2) video.play().catch(() => {});
+      });
+    }
+    return attempt;
   }
 
   function runCrossfade() {
