@@ -45,6 +45,49 @@ body.in-vr #env-overlay {
   visibility: hidden;
 }
 
+/* ── Gyro button (mobile) ───────────────────────────────────────────────── */
+.gyro-btn {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(8, 8, 8, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: opacity 0.25s, transform 0.25s, background 0.25s;
+}
+
+.gyro-btn[hidden] {
+  display: none !important;
+}
+
+.gyro-btn.is-active {
+  background: rgba(229, 57, 53, 0.25);
+  border-color: rgba(229, 57, 53, 0.55);
+  color: #ffb4b4;
+}
+
+.gyro-btn:active {
+  transform: translateX(-50%) scale(0.97);
+}
+
+body.in-vr .gyro-btn {
+  display: none !important;
+}
+
 /* ── Loader ─────────────────────────────────────────────────────────────── */
 #loader {
   position: fixed;

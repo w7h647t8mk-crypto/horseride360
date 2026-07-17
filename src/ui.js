@@ -109,12 +109,12 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
         setSoundEnabled(enabled);
         playCue(enabled ? 'toggle-on' : 'toggle-off');
       } else if (choice === '2') {
-        const enabled = await onToggleGyro();
-        playCue(enabled ? 'toggle-on' : 'toggle-off');
-        if (!enabled && gyroOn) {
+        if (gyroOn) {
+          onToggleGyro();
+          playCue('toggle-off');
           alert('Gyroscope désactivé.');
-        } else if (!enabled) {
-          alert('Autorisez l\'accès au capteur de mouvement dans les réglages du navigateur.');
+        } else {
+          alert('Appuyez sur le bouton « Activer le gyroscope » en haut de l\'écran.');
         }
       }
       return;

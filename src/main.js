@@ -15,9 +15,10 @@ window.addEventListener('pointerdown', unlockSounds, { once: true });
 
 const canvas = document.getElementById('canvas');
 const uiEl = document.getElementById('ui');
+const gyroBtn = document.getElementById('gyro-btn');
 const mobile = isMobileLayout();
 
-const INTERACTIVE_SELECTOR = '.card, .bottom-bar, .chip, .launch-btn, .ui-logo, button, a, input, label';
+const INTERACTIVE_SELECTOR = '.card, .bottom-bar, .chip, .launch-btn, .ui-logo, .gyro-btn, button, a, input, label';
 const UI_PANEL_Z = -3.2;
 const UI_SCALE = 0.00172;
 
@@ -102,18 +103,47 @@ function updateUiBillboard() {
   uiPanel?.lookAt(camera.position);
 }
 
+function updateGyroButton(active) {
+  if (!gyroBtn) return;
+  gyroActive = active;
+  gyroBtn.classList.toggle('is-active', active);
+  gyroBtn.innerHTML = active
+    ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l4 4L19 6"/></svg> Gyro actif — inclinez'
+    : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2 2"/></svg> Activer le gyroscope';
+  if (active) {
+    setTimeout(() => gyroBtn.setAttribute('hidden', ''), 2500);
+  } else {
+    gyroBtn.removeAttribute('hidden');
+  }
+}
+
 const gyro = createGyroControls({
   onOrientation: (gLon, gLat) => {
     if (drag || isPresenting) return;
     setView(gLon, gLat);
   },
   isBlocked: () => isPresenting,
+  onActiveChange: updateGyroButton,
 });
 
-async function enableGyro() {
-  const ok = await gyro.enable();
-  gyroActive = ok && gyro.isEnabled();
-  return ok;
+function requestGyroFromGesture({ quiet = false } = {}) {
+  if (!quiet) playCue('info', { volume: 0.35 });
+  gyro.enableFromGesture((ok, reason) => {
+    if (ok) {
+      playCue('toggle-on');
+      return;
+    }
+    if (reason === 'denied') {
+      alert('Autorisation refusée.\n\nRéglages iPhone → Safari → Capteurs de mouvement → Autoriser.');
+    } else if (reason === 'unsupported') {
+      alert('Gyroscope non disponible sur cet appareil ou navigateur.');
+    }
+  });
+}
+
+if (mobile && gyroBtn) {
+  gyroBtn.removeAttribute('hidden');
+  gyroBtn.addEventListener('click', requestGyroFromGesture);
 }
 
 const texLoader = new THREE.TextureLoader();
@@ -144,16 +174,15 @@ const ui = initUI({
     console.log(`[VR Show] Lancement VR — ${viewpointId}`);
     launchVR();
   },
-  onToggleGyro: async () => {
-    if (gyro.isEnabled()) {
+  onToggleGyro: () => {
+    if (gyro.isListening()) {
       gyro.disable();
-      gyroActive = false;
-    } else {
-      await enableGyro();
+      return false;
     }
-    return gyro.isEnabled();
+    requestGyroFromGesture();
+    return gyro.isListening();
   },
-  isGyroEnabled: () => gyro.isEnabled(),
+  isGyroEnabled: () => gyro.isListening(),
 });
 
 setupWebXR(renderer, {
@@ -165,6 +194,7 @@ setupWebXR(renderer, {
     ui.hide();
     if (uiPanel) uiPanel.visible = false;
     cssRenderer.domElement.style.display = 'none';
+    gyroBtn?.setAttribute('hidden', '');
   },
   onSessionEnd: () => {
     isPresenting = false;
@@ -174,6 +204,7 @@ setupWebXR(renderer, {
       uiPanel.visible = true;
       cssRenderer.domElement.style.display = '';
     }
+    if (mobile && gyroBtn && !gyro.isListening()) gyroBtn.removeAttribute('hidden');
     applyCameraRotation();
     updateUiBillboard();
   },
@@ -182,8 +213,8 @@ setupWebXR(renderer, {
 function startLook(e) {
   if (isPresenting || isInteractiveTarget(e.target)) return;
 
-  if (mobile && gyro.isEnabled() && !gyroActive) {
-    enableGyro();
+  if (mobile && !gyro.isListening()) {
+    requestGyroFromGesture({ quiet: true });
   }
 
   drag = { x: e.clientX, y: e.clientY, id: e.pointerId };
@@ -229,6 +260,6 @@ window.VRShow = {
   launchVR,
   rotateView,
   playCue,
-  enableGyro,
+  enableGyro: requestGyroFromGesture,
   onViewpointChange: (cb) => window.addEventListener('vrshow:viewpoint', (e) => cb(e.detail)),
 };
