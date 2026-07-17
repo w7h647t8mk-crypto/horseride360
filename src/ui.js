@@ -5,17 +5,18 @@ export const VIEWPOINTS = {
   'casque-pov': {
     id: 'casque-pov',
     label: 'POV Cavalier',
-    video: publicUrl('assets/videos/casque-pov.mp4'),
+    preview: publicUrl('assets/videos/casque-pov.mp4'),
   },
   perche: {
     id: 'perche',
     label: 'Vue Perche',
-    video: publicUrl('assets/videos/perche.mp4'),
+    preview: publicUrl('assets/videos/perche-preview.mp4'),
+    immersion: publicUrl('assets/videos/perche.mp4'),
   },
   drone: {
     id: 'drone',
     label: 'Vue Drone',
-    video: publicUrl('assets/videos/drone.mp4'),
+    preview: publicUrl('assets/videos/drone.mp4'),
   },
 };
 
@@ -136,7 +137,13 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
       cards.forEach(stopPreview);
       ui.classList.add('hidden');
     },
-    show: () => ui.classList.remove('hidden'),
+    show: () => {
+      ui.classList.remove('hidden', 'is-minified');
+    },
+    minify: () => {
+      cards.forEach(stopPreview);
+      ui.classList.add('is-minified');
+    },
     selectViewpoint,
   };
 }

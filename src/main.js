@@ -109,14 +109,50 @@ function rotateView(deltaLon, deltaLat) {
   setView(lon - deltaLon, lat + deltaLat);
 }
 
+let uiMinifyScale = null;
+let isImmersion = false;
+
+function getUiBaseScale() {
+  return mobile ? getMobileUiScale() : 0.00172;
+}
+
+function minifyUiPanel() {
+  const base = getUiBaseScale();
+  const target = base * 0.38;
+  const fromY = UI_PANEL_Y;
+  const toY = UI_PANEL_Y + 0.22;
+  const start = performance.now();
+  const duration = 720;
+
+  return new Promise((resolve) => {
+    function step(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      const scale = base + (target - base) * eased;
+      uiMinifyScale = scale;
+      uiPanel.scale.setScalar(scale);
+      uiPanel.position.y = fromY + (toY - fromY) * eased;
+      if (t < 1) requestAnimationFrame(step);
+      else resolve();
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+function restoreUiPanel() {
+  uiMinifyScale = null;
+  uiPanel.scale.setScalar(getUiBaseScale());
+  uiPanel.position.y = UI_PANEL_Y;
+}
+
 function updateUiBillboard() {
   uiPanel.lookAt(camera.position);
 }
 
 function updateMobileUiScale() {
-  if (!mobile) return;
-  const scale = getMobileUiScale();
-  uiPanel.scale.setScalar(scale);
+  if (!mobile || isImmersion) return;
+  const scale = getUiBaseScale();
+  uiPanel.scale.setScalar(uiMinifyScale ?? scale);
 }
 
 function updateGyroButton(active) {
@@ -174,11 +210,21 @@ const ui = initUI({
   mobile,
   onViewpointChange: ({ viewpointId, label }) => {
     console.log(`[VR Show] ${label} (${viewpointId})`);
-    const videoUrl = VIEWPOINTS[viewpointId]?.video;
-    environment.setViewpoint(viewpointId, videoUrl);
   },
-  onLaunchVR: (viewpointId) => {
-    console.log(`[VR Show] Lancement VR — ${viewpointId}`);
+  onLaunchVR: async (viewpointId) => {
+    const vp = VIEWPOINTS[viewpointId];
+    console.log(`[VR Show] Lancement — ${vp?.label ?? viewpointId}`);
+
+    if (vp?.immersion) {
+      isImmersion = true;
+      document.body.classList.add('in-immersion');
+      gyroBtn?.setAttribute('hidden', '');
+
+      ui.minify();
+      await Promise.all([minifyUiPanel(), environment.fadeToVideo(vp.immersion, viewpointId)]);
+      return;
+    }
+
     launchVR();
   },
   onToggleGyro: () => {
@@ -215,8 +261,18 @@ setupWebXR(renderer, {
   },
 });
 
+function exitImmersion() {
+  if (!isImmersion) return;
+  isImmersion = false;
+  document.body.classList.remove('in-immersion');
+  environment.stopVideo();
+  restoreUiPanel();
+  ui.show();
+  if (mobile && gyroBtn && !gyro.isListening()) gyroBtn.removeAttribute('hidden');
+}
+
 function startLook(e) {
-  if (isPresenting || isInteractiveTarget(e.target)) return;
+  if (isPresenting || isImmersion || isInteractiveTarget(e.target)) return;
 
   if (mobile && !gyro.isListening()) {
     requestGyroFromGesture({ quiet: true });
