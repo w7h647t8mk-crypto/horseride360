@@ -41,23 +41,29 @@ export function createGyroControls({ onOrientation, isBlocked, onActiveChange })
     return { lon: lonDeg, lat: clampLat(latDeg) };
   }
 
+  let baselineLon = 0;
+  let baselineLat = 0;
+
   function handleOrientation(event) {
     if (!enabled || !listening || isBlocked?.()) return;
     if (event.alpha == null && event.beta == null) return;
 
     const { lon: targetLon, lat: targetLat } = orientationToLonLat(event);
-    const adjustedLon = targetLon + offsetLon;
-    const adjustedLat = clampLat(targetLat + offsetLat);
 
     if (!calibrated) {
-      smoothLon = adjustedLon;
-      smoothLat = adjustedLat;
+      offsetLon = baselineLon - targetLon;
+      offsetLat = baselineLat - targetLat;
+      smoothLon = baselineLon;
+      smoothLat = baselineLat;
       calibrated = true;
-    } else {
-      smoothLon += (adjustedLon - smoothLon) * 0.2;
-      smoothLat += (adjustedLat - smoothLat) * 0.2;
+      onOrientation(smoothLon, smoothLat);
+      return;
     }
 
+    const adjustedLon = targetLon + offsetLon;
+    const adjustedLat = clampLat(targetLat + offsetLat);
+    smoothLon += (adjustedLon - smoothLon) * 0.2;
+    smoothLat += (adjustedLat - smoothLat) * 0.2;
     onOrientation(smoothLon, smoothLat);
   }
 
@@ -134,6 +140,12 @@ export function createGyroControls({ onOrientation, isBlocked, onActiveChange })
     offsetLat = clampLat(offsetLat);
   }
 
+  function calibrateToView(currentLon, currentLat) {
+    baselineLon = currentLon;
+    baselineLat = currentLat;
+    calibrated = false;
+  }
+
   function resetOffset() {
     offsetLon = 0;
     offsetLat = 0;
@@ -146,6 +158,7 @@ export function createGyroControls({ onOrientation, isBlocked, onActiveChange })
     isEnabled,
     isListening,
     addOffset,
+    calibrateToView,
     resetOffset,
   };
 }
