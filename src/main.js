@@ -17,12 +17,24 @@ const canvas = document.getElementById('canvas');
 const uiEl = document.getElementById('ui');
 const gyroBtn = document.getElementById('gyro-btn');
 const mobile = isMobileLayout();
+const MOBILE_PANEL_WIDTH = 1120;
+const MOBILE_TARGET_WIDTH_RATIO = 0.93;
+const MOBILE_PANEL_DISTANCE = 2.35;
+
+function getMobileUiScale() {
+  const vFovRad = THREE.MathUtils.degToRad(70);
+  const aspect = window.innerWidth / window.innerHeight;
+  const hFovRad = 2 * Math.atan(Math.tan(vFovRad / 2) * aspect);
+  const halfAngle = (hFovRad * MOBILE_TARGET_WIDTH_RATIO) / 2;
+  const worldWidth = MOBILE_PANEL_DISTANCE * Math.tan(halfAngle) * 2;
+  return worldWidth / MOBILE_PANEL_WIDTH;
+}
 
 const INTERACTIVE_SELECTOR = '.card, .bottom-bar, .chip, .launch-btn, .ui-logo, .gyro-btn, button, a, input, label';
-const UI_PANEL_Z = mobile ? -2.75 : -3.2;
+const UI_PANEL_Z = mobile ? -MOBILE_PANEL_DISTANCE : -3.2;
 const UI_PANEL_Y = mobile ? 1.48 : 1.52;
-const UI_SCALE = mobile ? 0.00185 : 0.00172;
-const UI_PANEL_DIST = Math.abs(UI_PANEL_Z);
+const UI_SCALE = mobile ? getMobileUiScale() : 0.00172;
+let uiPanelDistance = mobile ? MOBILE_PANEL_DISTANCE : Math.abs(UI_PANEL_Z);
 
 const _cameraDir = new THREE.Vector3();
 const _panelPos = new THREE.Vector3();
@@ -103,11 +115,17 @@ function rotateView(deltaLon, deltaLat) {
 function updateUiBillboard() {
   if (mobile) {
     camera.getWorldDirection(_cameraDir);
-    _panelPos.copy(camera.position).addScaledVector(_cameraDir, UI_PANEL_DIST);
-    _panelPos.y = camera.position.y - 0.06;
+    _panelPos.copy(camera.position).addScaledVector(_cameraDir, uiPanelDistance);
+    _panelPos.y = camera.position.y - 0.04;
     uiPanel.position.copy(_panelPos);
   }
   uiPanel.lookAt(camera.position);
+}
+
+function updateMobileUiScale() {
+  if (!mobile) return;
+  const scale = getMobileUiScale();
+  uiPanel.scale.setScalar(scale);
 }
 
 function updateGyroButton(active) {
@@ -251,6 +269,7 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   cssRenderer.setSize(window.innerWidth, window.innerHeight);
+  updateMobileUiScale();
 });
 
 renderer.setAnimationLoop(() => {
