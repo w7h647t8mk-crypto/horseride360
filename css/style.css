@@ -566,39 +566,15 @@ body.in-vr .ui {
   display: none !important;
 }
 
-/* ── Mobile: overlay 2D (pas CSS3D) ─────────────────────────────────────── */
-body.is-mobile #css3d-root {
-  display: none !important;
-}
-
-body.is-mobile .ui {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  top: auto;
-  width: 100%;
-  max-width: none;
-  max-height: min(88vh, 820px);
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  z-index: 10;
-  margin: 0;
-  padding: 18px 14px calc(14px + env(safe-area-inset-bottom));
-  border-radius: 24px 24px 0 0;
-  border-bottom: none;
+/* ── Mobile: panneau 3D compact (même comportement que desktop) ──────────── */
+body.is-mobile .ui.ui--compact {
+  width: 700px;
+  padding: 20px 22px 22px;
+  border-radius: 24px;
 }
 
 body.is-mobile .ui-header {
-  grid-template-columns: 1fr;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-body.is-mobile .chip--left,
-body.is-mobile .chip--right {
-  justify-self: center;
+  margin-bottom: 10px;
 }
 
 body.is-mobile .chip--right {
@@ -606,54 +582,67 @@ body.is-mobile .chip--right {
 }
 
 body.is-mobile .ui-logo {
-  width: 72px;
+  width: 64px;
+}
+
+body.is-mobile .chip {
+  font-size: 0.58rem;
+  padding: 6px 10px;
 }
 
 body.is-mobile .ui-hero-text {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 body.is-mobile .ui-hero-text h1 {
-  font-size: 1.05rem;
+  font-size: 1rem;
   letter-spacing: 0.03em;
 }
 
 body.is-mobile .ui-subtitle {
-  font-size: 0.68rem;
-  letter-spacing: 0.1em;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
 }
 
 body.is-mobile .ui-section-title {
-  margin: 8px 0 12px;
-  font-size: 0.68rem;
+  margin: 6px 0 10px;
+  font-size: 0.62rem;
 }
 
 body.is-mobile .cards {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  gap: 14px;
-  padding: 4px 2px 12px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-body.is-mobile .cards::-webkit-scrollbar {
-  display: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 body.is-mobile .card {
-  flex: 0 0 min(68vw, 220px);
-  scroll-snap-align: center;
-  padding: 12px 10px 22px;
+  padding: 10px 8px 18px;
+  border-radius: 20px;
+}
+
+body.is-mobile .card__icon {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 8px;
+}
+
+body.is-mobile .card__icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 body.is-mobile .card__title {
-  font-size: 0.68rem;
+  font-size: 0.58rem;
+  margin-bottom: 8px;
+}
+
+body.is-mobile .card__screen {
+  border-radius: 14px;
+  margin-bottom: 8px;
 }
 
 body.is-mobile .card__footer {
-  font-size: 0.62rem;
+  font-size: 0.52rem;
+  gap: 2px;
 }
 
 body.is-mobile .card__footer-sub {
@@ -662,36 +651,43 @@ body.is-mobile .card__footer-sub {
 
 body.is-mobile .card:hover,
 body.is-mobile .card.is-previewing {
-  transform: none;
+  transform: translateY(-2px) scale(1.01);
 }
 
 body.is-mobile .bottom-bar {
-  margin-top: 14px;
-  gap: 18px;
-  padding: 8px 18px;
+  margin-top: 12px;
+  gap: 14px;
+  padding: 6px 14px;
 }
 
 body.is-mobile .launch-btn {
-  margin-top: -14px;
+  margin-top: -12px;
 }
 
 body.is-mobile .launch-btn__inner {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
+}
+
+body.is-mobile .launch-btn__inner svg {
+  width: 18px;
+  height: 18px;
 }
 
 body.is-mobile .launch-btn__ring {
-  width: 58px;
-  height: 58px;
+  width: 52px;
+  height: 52px;
 }
 
-@media (max-width: 480px) {
-  body.is-mobile .chip {
-    font-size: 0.58rem;
-    padding: 6px 10px;
-  }
+body.is-mobile .launch-btn__label {
+  font-size: 0.46rem;
+}
 
-  body.is-mobile .card {
-    flex-basis: min(74vw, 200px);
-  }
+body.is-mobile .bottom-bar__side {
+  font-size: 0.44rem;
+}
+
+body.is-mobile .bottom-bar__side svg {
+  width: 14px;
+  height: 14px;
 }

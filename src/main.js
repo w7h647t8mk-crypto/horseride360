@@ -19,11 +19,13 @@ const gyroBtn = document.getElementById('gyro-btn');
 const mobile = isMobileLayout();
 
 const INTERACTIVE_SELECTOR = '.card, .bottom-bar, .chip, .launch-btn, .ui-logo, .gyro-btn, button, a, input, label';
-const UI_PANEL_Z = -3.2;
-const UI_SCALE = 0.00172;
+const UI_PANEL_Z = mobile ? -2.75 : -3.2;
+const UI_PANEL_Y = mobile ? 1.48 : 1.52;
+const UI_SCALE = mobile ? 0.00128 : 0.00172;
 
 if (mobile) {
   document.body.classList.add('is-mobile');
+  uiEl.classList.add('ui--compact');
   const subtitle = document.querySelector('.ui-subtitle');
   if (subtitle) subtitle.textContent = 'EXPÉRIENCE VR 360° · Inclinez ou glissez pour explorer';
 }
@@ -55,15 +57,10 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 camera.position.set(0, 1.6, 0);
 scene.add(camera);
 
-let uiPanel = null;
-if (!mobile) {
-  uiPanel = new CSS3DObject(uiEl);
-  uiPanel.position.set(0, 1.52, UI_PANEL_Z);
-  uiPanel.scale.setScalar(UI_SCALE);
-  scene.add(uiPanel);
-} else {
-  cssRenderer.domElement.style.display = 'none';
-}
+const uiPanel = new CSS3DObject(uiEl);
+uiPanel.position.set(0, UI_PANEL_Y, UI_PANEL_Z);
+uiPanel.scale.setScalar(UI_SCALE);
+scene.add(uiPanel);
 
 let lon = 0;
 let lat = 0;
@@ -100,7 +97,7 @@ function rotateView(deltaLon, deltaLat) {
 }
 
 function updateUiBillboard() {
-  uiPanel?.lookAt(camera.position);
+  uiPanel.lookAt(camera.position);
 }
 
 function updateGyroButton(active) {
@@ -192,7 +189,7 @@ setupWebXR(renderer, {
     document.body.classList.remove('is-looking');
     document.body.classList.add('in-vr');
     ui.hide();
-    if (uiPanel) uiPanel.visible = false;
+    uiPanel.visible = false;
     cssRenderer.domElement.style.display = 'none';
     gyroBtn?.setAttribute('hidden', '');
   },
@@ -200,10 +197,8 @@ setupWebXR(renderer, {
     isPresenting = false;
     document.body.classList.remove('in-vr');
     ui.show();
-    if (uiPanel) {
-      uiPanel.visible = true;
-      cssRenderer.domElement.style.display = '';
-    }
+    uiPanel.visible = true;
+    cssRenderer.domElement.style.display = '';
     if (mobile && gyroBtn && !gyro.isListening()) gyroBtn.removeAttribute('hidden');
     applyCameraRotation();
     updateUiBillboard();
@@ -249,9 +244,9 @@ window.addEventListener('resize', () => {
 });
 
 renderer.setAnimationLoop(() => {
-  if (!isPresenting && uiPanel) updateUiBillboard();
+  if (!isPresenting) updateUiBillboard();
   renderer.render(scene, camera);
-  if (!isPresenting && uiPanel) cssRenderer.render(scene, camera);
+  if (!isPresenting) cssRenderer.render(scene, camera);
 });
 
 window.VRShow = {
