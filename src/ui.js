@@ -136,7 +136,6 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
   }
 
   if (mobile) {
-    document.body.classList.add('has-mobile-launch');
     launchBtn?.addEventListener('touchend', (e) => {
       e.preventDefault();
       e.stopPropagation();

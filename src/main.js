@@ -70,7 +70,7 @@ if (mobile) {
   uiEl.classList.add('ui--compact');
   const subtitle = document.querySelector('.ui-subtitle');
   if (subtitle) {
-    subtitle.textContent = 'EXPÉRIENCE VR 360° · Double-tap sur la vue choisie pour lancer';
+    subtitle.textContent = 'EXPÉRIENCE VR 360° · Explorez · Double-tap pour lancer';
   }
 }
 
@@ -101,17 +101,13 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 camera.position.set(0, 1.6, 0);
 scene.add(camera);
 
-let uiPanel = null;
+const uiPanel = new CSS3DObject(uiEl);
+uiPanel.position.set(0, UI_PANEL_Y, UI_PANEL_Z);
+uiPanel.scale.setScalar(UI_SCALE);
+scene.add(uiPanel);
 
 if (mobile) {
-  // Overlay 2D : iOS n'autorise play() que depuis un vrai tap HTML (pas CSS3D).
-  uiEl.classList.add('ui--mobile-overlay');
-  cssRenderer.domElement.style.display = 'none';
-} else {
-  uiPanel = new CSS3DObject(uiEl);
-  uiPanel.position.set(0, UI_PANEL_Y, UI_PANEL_Z);
-  uiPanel.scale.setScalar(UI_SCALE);
-  scene.add(uiPanel);
+  updateMobileUiScale();
 }
 
 let lon = 0;
@@ -180,8 +176,7 @@ async function exitImmersion() {
 }
 
 function updateUiBillboard() {
-  if (!uiPanel || mobile) return;
-  uiPanel.lookAt(camera.position);
+  // Panneau world-locked : ne suit pas la caméra (desktop et mobile).
 }
 
 function updateMobileUiScale() {
@@ -338,7 +333,7 @@ setupWebXR(renderer, {
     document.body.classList.remove('in-vr');
     ui.show();
     if (uiPanel) uiPanel.visible = true;
-    cssRenderer.domElement.style.display = mobile ? 'none' : '';
+    cssRenderer.domElement.style.display = '';
     if (mobile && gyroBtn && !gyro.isListening()) gyroBtn.removeAttribute('hidden');
     applyCameraRotation();
     updateUiBillboard();
@@ -417,9 +412,8 @@ window.addEventListener('resize', () => {
 
 renderer.setAnimationLoop(() => {
   environment.tick();
-  if (!isPresenting && !isImmersion && !mobile) updateUiBillboard();
   renderer.render(scene, camera);
-  if (!isPresenting && !isImmersion && !mobile) cssRenderer.render(scene, camera);
+  if (!isPresenting && !isImmersion) cssRenderer.render(scene, camera);
 });
 
 window.VRShow = {
