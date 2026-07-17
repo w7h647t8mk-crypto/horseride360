@@ -1,20 +1,21 @@
 import { playCue, setSoundEnabled, isSoundEnabled } from './sounds.js';
+import { publicUrl } from './paths.js';
 
 export const VIEWPOINTS = {
   'casque-pov': {
     id: 'casque-pov',
     label: 'POV Cavalier',
-    video: '/assets/videos/casque-pov.mp4',
+    video: publicUrl('assets/videos/casque-pov.mp4'),
   },
   perche: {
     id: 'perche',
     label: 'Vue Perche',
-    video: '/assets/videos/perche.mp4',
+    video: publicUrl('assets/videos/perche.mp4'),
   },
   drone: {
     id: 'drone',
     label: 'Vue Drone',
-    video: '/assets/videos/drone.mp4',
+    video: publicUrl('assets/videos/drone.mp4'),
   },
 };
 

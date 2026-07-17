@@ -1,5 +1,7 @@
+import '../css/style.css';
 import * as THREE from 'three';
 import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
+import { publicUrl } from './paths.js';
 import { loadTransparentLogo } from './textures.js';
 import { initUI } from './ui.js';
 import { setupWebXR, launchVR } from './xr.js';
@@ -16,7 +18,7 @@ const INTERACTIVE_SELECTOR = '.card, .bottom-bar, .chip, .launch-btn, .ui-logo, 
 const UI_PANEL_Z = -3.2;
 const UI_SCALE = 0.00172;
 
-loadTransparentLogo('/assets/logo.png').then(({ dataUrl }) => {
+loadTransparentLogo(publicUrl('assets/logo.png')).then(({ dataUrl }) => {
   const logo = document.getElementById('logo');
   if (logo) {
     logo.src = dataUrl;
@@ -78,7 +80,7 @@ function updateUiBillboard() {
 }
 
 const texLoader = new THREE.TextureLoader();
-texLoader.load('/assets/panorama.png', (tex) => {
+texLoader.load(publicUrl('assets/panorama.png'), (tex) => {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.mapping = THREE.EquirectangularReflectionMapping;
   scene.background = tex;

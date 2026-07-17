@@ -1,5 +1,6 @@
 import { loadTransparentLogo } from './textures.js';
 import { markWelcomeSound } from './sounds.js';
+import { publicUrl } from './paths.js';
 
 const STEPS = [
   { progress: 12, label: 'Initialisation…' },
@@ -52,7 +53,7 @@ export async function runLoadingScreen() {
     logo: document.querySelector('.loader-logo'),
   };
 
-  const logoPromise = loadTransparentLogo('/assets/logo.png').then(({ dataUrl }) => {
+  const logoPromise = loadTransparentLogo(publicUrl('assets/logo.png')).then(({ dataUrl }) => {
     els.logo.src = dataUrl;
     els.logo.removeAttribute('hidden');
   });
