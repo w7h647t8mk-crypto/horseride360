@@ -34,7 +34,7 @@ function playPreview(card) {
   video.play().catch(() => {});
 }
 
-export function initUI({ onViewpointChange, onLaunchVR }) {
+export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggleGyro, isGyroEnabled }) {
   const ui = document.getElementById('ui');
   const cards = [...document.querySelectorAll('.card')];
   const launchBtn = document.getElementById('launch-btn');
@@ -74,6 +74,15 @@ export function initUI({ onViewpointChange, onLaunchVR }) {
     });
 
     card.addEventListener('mouseleave', () => stopPreview(card));
+
+    if (mobile) {
+      card.addEventListener('touchstart', () => {
+        cards.forEach((other) => {
+          if (other !== card) stopPreview(other);
+        });
+        playPreview(card);
+      }, { passive: true });
+    }
   });
 
   launchBtn.addEventListener('click', () => {
@@ -86,7 +95,31 @@ export function initUI({ onViewpointChange, onLaunchVR }) {
     alert('VR Show — Sortie équestre immersive à 360°\n\nChoisissez un point de vue puis lancez l\'expérience VR.');
   });
 
-  document.getElementById('btn-settings')?.addEventListener('click', () => {
+  document.getElementById('btn-settings')?.addEventListener('click', async () => {
+    if (mobile && onToggleGyro) {
+      const soundOn = isSoundEnabled();
+      const gyroOn = isGyroEnabled?.() ?? false;
+      const choice = prompt(
+        `Réglages\n\n1 — Son : ${soundOn ? 'ON' : 'OFF'}\n2 — Gyroscope : ${gyroOn ? 'ON' : 'OFF'}\n\nEntrez 1 ou 2 pour basculer`,
+        ''
+      );
+
+      if (choice === '1') {
+        const enabled = !soundOn;
+        setSoundEnabled(enabled);
+        playCue(enabled ? 'toggle-on' : 'toggle-off');
+      } else if (choice === '2') {
+        const enabled = await onToggleGyro();
+        playCue(enabled ? 'toggle-on' : 'toggle-off');
+        if (!enabled && gyroOn) {
+          alert('Gyroscope désactivé.');
+        } else if (!enabled) {
+          alert('Autorisez l\'accès au capteur de mouvement dans les réglages du navigateur.');
+        }
+      }
+      return;
+    }
+
     const enabled = !isSoundEnabled();
     setSoundEnabled(enabled);
     playCue(enabled ? 'toggle-on' : 'toggle-off');

@@ -4,7 +4,7 @@
   "description": "Interface WebGL Three.js — sélection d'allure (pas, trot, galop)",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "build:pages": "vite build --mode pages",
     "preview": "vite preview",

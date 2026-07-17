@@ -7,16 +7,25 @@ import { initUI } from './ui.js';
 import { setupWebXR, launchVR } from './xr.js';
 import { runLoadingScreen, notifyAssetsReady } from './loader.js';
 import { initSounds, unlockSounds, playCue } from './sounds.js';
+import { isMobileLayout } from './device.js';
+import { createGyroControls } from './gyro.js';
 
 initSounds();
 window.addEventListener('pointerdown', unlockSounds, { once: true });
 
 const canvas = document.getElementById('canvas');
 const uiEl = document.getElementById('ui');
+const mobile = isMobileLayout();
 
 const INTERACTIVE_SELECTOR = '.card, .bottom-bar, .chip, .launch-btn, .ui-logo, button, a, input, label';
 const UI_PANEL_Z = -3.2;
 const UI_SCALE = 0.00172;
+
+if (mobile) {
+  document.body.classList.add('is-mobile');
+  const subtitle = document.querySelector('.ui-subtitle');
+  if (subtitle) subtitle.textContent = 'EXPÉRIENCE VR 360° · Inclinez ou glissez pour explorer';
+}
 
 loadTransparentLogo(publicUrl('assets/logo.png')).then(({ dataUrl }) => {
   const logo = document.getElementById('logo');
@@ -45,15 +54,21 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 camera.position.set(0, 1.6, 0);
 scene.add(camera);
 
-const uiPanel = new CSS3DObject(uiEl);
-uiPanel.position.set(0, 1.52, UI_PANEL_Z);
-uiPanel.scale.setScalar(UI_SCALE);
-scene.add(uiPanel);
+let uiPanel = null;
+if (!mobile) {
+  uiPanel = new CSS3DObject(uiEl);
+  uiPanel.position.set(0, 1.52, UI_PANEL_Z);
+  uiPanel.scale.setScalar(UI_SCALE);
+  scene.add(uiPanel);
+} else {
+  cssRenderer.domElement.style.display = 'none';
+}
 
 let lon = 0;
 let lat = 0;
 let isPresenting = false;
 let drag = null;
+let gyroActive = false;
 
 function isInteractiveTarget(el) {
   return el?.closest?.(INTERACTIVE_SELECTOR);
@@ -69,14 +84,36 @@ function applyCameraRotation() {
   );
 }
 
-function rotateView(deltaLon, deltaLat) {
-  lon -= deltaLon;
-  lat = Math.max(-85, Math.min(85, lat + deltaLat));
+function setView(nextLon, nextLat) {
+  lon = nextLon;
+  lat = Math.max(-85, Math.min(85, nextLat));
   applyCameraRotation();
 }
 
+function rotateView(deltaLon, deltaLat) {
+  if (mobile && gyroActive) {
+    gyro.addOffset(deltaLon, deltaLat);
+    return;
+  }
+  setView(lon - deltaLon, lat + deltaLat);
+}
+
 function updateUiBillboard() {
-  uiPanel.lookAt(camera.position);
+  uiPanel?.lookAt(camera.position);
+}
+
+const gyro = createGyroControls({
+  onOrientation: (gLon, gLat) => {
+    if (drag || isPresenting) return;
+    setView(gLon, gLat);
+  },
+  isBlocked: () => isPresenting,
+});
+
+async function enableGyro() {
+  const ok = await gyro.enable();
+  gyroActive = ok && gyro.isEnabled();
+  return ok;
 }
 
 const texLoader = new THREE.TextureLoader();
@@ -99,6 +136,7 @@ updateUiBillboard();
 runLoadingScreen();
 
 const ui = initUI({
+  mobile,
   onViewpointChange: ({ viewpointId, label }) => {
     console.log(`[VR Show] ${label} (${viewpointId})`);
   },
@@ -106,6 +144,16 @@ const ui = initUI({
     console.log(`[VR Show] Lancement VR — ${viewpointId}`);
     launchVR();
   },
+  onToggleGyro: async () => {
+    if (gyro.isEnabled()) {
+      gyro.disable();
+      gyroActive = false;
+    } else {
+      await enableGyro();
+    }
+    return gyro.isEnabled();
+  },
+  isGyroEnabled: () => gyro.isEnabled(),
 });
 
 setupWebXR(renderer, {
@@ -115,15 +163,17 @@ setupWebXR(renderer, {
     document.body.classList.remove('is-looking');
     document.body.classList.add('in-vr');
     ui.hide();
-    uiPanel.visible = false;
+    if (uiPanel) uiPanel.visible = false;
     cssRenderer.domElement.style.display = 'none';
   },
   onSessionEnd: () => {
     isPresenting = false;
     document.body.classList.remove('in-vr');
     ui.show();
-    uiPanel.visible = true;
-    cssRenderer.domElement.style.display = '';
+    if (uiPanel) {
+      uiPanel.visible = true;
+      cssRenderer.domElement.style.display = '';
+    }
     applyCameraRotation();
     updateUiBillboard();
   },
@@ -131,6 +181,11 @@ setupWebXR(renderer, {
 
 function startLook(e) {
   if (isPresenting || isInteractiveTarget(e.target)) return;
+
+  if (mobile && gyro.isEnabled() && !gyroActive) {
+    enableGyro();
+  }
+
   drag = { x: e.clientX, y: e.clientY, id: e.pointerId };
   document.body.classList.add('is-looking');
   canvas.setPointerCapture?.(e.pointerId);
@@ -163,9 +218,9 @@ window.addEventListener('resize', () => {
 });
 
 renderer.setAnimationLoop(() => {
-  if (!isPresenting) updateUiBillboard();
+  if (!isPresenting && uiPanel) updateUiBillboard();
   renderer.render(scene, camera);
-  if (!isPresenting) cssRenderer.render(scene, camera);
+  if (!isPresenting && uiPanel) cssRenderer.render(scene, camera);
 });
 
 window.VRShow = {
@@ -174,5 +229,6 @@ window.VRShow = {
   launchVR,
   rotateView,
   playCue,
+  enableGyro,
   onViewpointChange: (cb) => window.addEventListener('vrshow:viewpoint', (e) => cb(e.detail)),
 };
