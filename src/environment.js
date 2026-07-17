@@ -3,9 +3,19 @@ import { publicUrl } from './paths.js';
 
 const PANORAMA_URL = publicUrl('assets/panorama.png');
 const FADE_MS = 1400;
-const LOAD_TIMEOUT_MS = 45000;
+const LOAD_TIMEOUT_MS = 60000;
 
-export function createEnvironment(scene, { onReady, videoEl } = {}) {
+function resolveVideoUrl(url) {
+  return new URL(url, window.location.href).href;
+}
+
+function videoMatchesUrl(video, url) {
+  const target = resolveVideoUrl(url);
+  const current = video.currentSrc || video.src || '';
+  return current === target || current.endsWith(url.replace(/^\//, ''));
+}
+
+export function createEnvironment(scene, { onReady, videoEl, mobile = false } = {}) {
   let panoramaTexture = null;
   let videoElement = videoEl ?? null;
   let videoTexture = null;
@@ -13,6 +23,8 @@ export function createEnvironment(scene, { onReady, videoEl } = {}) {
   let videoSphere = null;
   let fadeRaf = null;
   let activeViewpointId = null;
+  let playUnlocked = false;
+  const sphereSegments = mobile ? 32 : 64;
 
   function getVideo() {
     if (videoElement) return videoElement;
@@ -22,10 +34,16 @@ export function createEnvironment(scene, { onReady, videoEl } = {}) {
     videoElement.playsInline = true;
     videoElement.setAttribute('playsinline', '');
     videoElement.setAttribute('webkit-playsinline', '');
+    videoElement.setAttribute('x-webkit-airplay', 'deny');
     videoElement.preload = 'auto';
-    videoElement.hidden = true;
+    videoElement.classList.add('immersion-video-el');
     document.body.appendChild(videoElement);
     return videoElement;
+  }
+
+  if (videoElement) {
+    videoElement.classList.add('immersion-video-el');
+    videoElement.removeAttribute('hidden');
   }
 
   function createSphere(texture, opacity = 1) {
@@ -37,7 +55,10 @@ export function createEnvironment(scene, { onReady, videoEl } = {}) {
     });
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.mapping = THREE.EquirectangularReflectionMapping;
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(50, 64, 64), material);
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(50, sphereSegments, sphereSegments),
+      material
+    );
     scene.add(mesh);
     return mesh;
   }
@@ -66,9 +87,14 @@ export function createEnvironment(scene, { onReady, videoEl } = {}) {
     fadeRaf = null;
   }
 
+  function ensurePlaying(video) {
+    if (!video.paused) return Promise.resolve();
+    return video.play().catch(() => {});
+  }
+
   function waitForVideoReady(video, url) {
     return new Promise((resolve, reject) => {
-      if (video.src !== url) {
+      if (!videoMatchesUrl(video, url)) {
         video.src = url;
         video.load();
       }
@@ -79,6 +105,7 @@ export function createEnvironment(scene, { onReady, videoEl } = {}) {
       }, LOAD_TIMEOUT_MS);
 
       const tryResolve = () => {
+        if (video.readyState < 2) return;
         cleanup();
         resolve(video);
       };
@@ -90,28 +117,29 @@ export function createEnvironment(scene, { onReady, videoEl } = {}) {
 
       const cleanup = () => {
         clearTimeout(timeout);
+        video.removeEventListener('loadedmetadata', tryResolve);
         video.removeEventListener('loadeddata', tryResolve);
         video.removeEventListener('canplay', tryResolve);
+        video.removeEventListener('playing', tryResolve);
         video.removeEventListener('error', onError);
       };
 
-      if (video.readyState >= 2) {
-        tryResolve();
-        return;
-      }
-
-      video.addEventListener('loadeddata', tryResolve, { once: true });
-      video.addEventListener('canplay', tryResolve, { once: true });
+      video.addEventListener('loadedmetadata', tryResolve);
+      video.addEventListener('loadeddata', tryResolve);
+      video.addEventListener('canplay', tryResolve);
+      video.addEventListener('playing', tryResolve);
       video.addEventListener('error', onError, { once: true });
 
-      video.play().catch(() => {});
+      tryResolve();
+      if (playUnlocked) ensurePlaying(video);
     });
   }
 
-  /** À appeler dans le geste utilisateur (tap LANCER) — requis iOS. */
+  /** Appeler en premier dans le handler tap/clic (iOS). */
   function primeVideo(url) {
     const video = getVideo();
-    if (video.src !== url) {
+    playUnlocked = true;
+    if (!videoMatchesUrl(video, url)) {
       video.src = url;
       video.load();
     }
@@ -132,6 +160,7 @@ export function createEnvironment(scene, { onReady, videoEl } = {}) {
       videoTexture.colorSpace = THREE.SRGBColorSpace;
       videoTexture.minFilter = THREE.LinearFilter;
       videoTexture.magFilter = THREE.LinearFilter;
+      videoTexture.generateMipmaps = false;
 
       disposeVideoSphere();
       videoSphere = createSphere(videoTexture, 0);
@@ -165,13 +194,15 @@ export function createEnvironment(scene, { onReady, videoEl } = {}) {
   async function fadeToVideo(url, viewpointId) {
     cancelFade();
     activeViewpointId = viewpointId;
-    await waitForVideoReady(getVideo(), url);
-    await getVideo().play();
+    const video = getVideo();
+    await waitForVideoReady(video, url);
+    await ensurePlaying(video);
     await runCrossfade();
   }
 
   function stopVideo() {
     cancelFade();
+    playUnlocked = false;
     const video = videoElement;
     if (video) {
       video.pause();
@@ -203,7 +234,8 @@ export function createEnvironment(scene, { onReady, videoEl } = {}) {
     fadeToVideo,
     stopVideo,
     tick() {
-      if (videoTexture && videoElement && !videoElement.paused) {
+      const video = videoElement;
+      if (videoTexture && video && !video.paused && video.readyState >= 2) {
         videoTexture.needsUpdate = true;
       }
     },

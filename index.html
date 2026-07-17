@@ -20,7 +20,10 @@
 
   <canvas id="canvas"></canvas>
   <div id="env-overlay" aria-hidden="true"></div>
-  <video id="immersion-video" playsinline webkit-playsinline muted loop preload="auto" hidden></video>
+  <video id="immersion-video" class="immersion-video-el" playsinline webkit-playsinline muted loop preload="auto"></video>
+  <div id="immersion-loading" class="immersion-loading" hidden>
+    <p class="immersion-loading__text">Chargement vidéo 360°…</p>
+  </div>
   <div id="immersion-bar" class="immersion-bar" hidden>
     <span id="immersion-label" class="immersion-bar__label">Immersion</span>
     <button type="button" id="exit-immersion" class="immersion-bar__btn">← Menu</button>

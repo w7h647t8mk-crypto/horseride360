@@ -20,7 +20,19 @@ const gyroBtn = document.getElementById('gyro-btn');
 const immersionBar = document.getElementById('immersion-bar');
 const immersionLabel = document.getElementById('immersion-label');
 const immersionVideo = document.getElementById('immersion-video');
+const immersionLoading = document.getElementById('immersion-loading');
 const mobile = isMobileLayout();
+
+if (mobile && VIEWPOINTS.perche) {
+  VIEWPOINTS.perche.immersion = publicUrl('assets/videos/perche-mobile.mp4');
+}
+
+function setImmersionLoading(visible) {
+  if (!immersionLoading) return;
+  if (visible) immersionLoading.removeAttribute('hidden');
+  else immersionLoading.setAttribute('hidden', '');
+}
+
 const MOBILE_PANEL_WIDTH = 1120;
 const MOBILE_TARGET_WIDTH_RATIO = 0.93;
 const MOBILE_PANEL_DISTANCE = 2.35;
@@ -134,6 +146,7 @@ async function enterImmersion(label) {
 async function exitImmersion() {
   if (!isImmersion) return;
   isImmersion = false;
+  setImmersionLoading(false);
   document.body.classList.remove('in-immersion');
   immersionBar?.setAttribute('hidden', '');
   environment.stopVideo();
@@ -205,6 +218,7 @@ if (mobile && gyroBtn) {
 const environment = createEnvironment(scene, {
   onReady: notifyAssetsReady,
   videoEl: immersionVideo,
+  mobile,
 });
 
 applyCameraRotation();
@@ -222,14 +236,22 @@ const ui = initUI({
     console.log(`[VR Show] Lancement — ${vp?.label ?? viewpointId}`);
 
     if (vp?.immersion) {
-      environment.primeVideo(vp.immersion).catch(() => {});
-      enableGyroForImmersion();
+      const url = vp.immersion;
+      environment.primeVideo(url);
 
-      enterImmersion(vp.label);
-      environment.fadeToVideo(vp.immersion, viewpointId).catch(() => {
-        alert('Impossible de charger la vidéo 360°.\nVérifiez votre connexion et réessayez.');
-        exitImmersion();
-      });
+      void (async () => {
+        setImmersionLoading(true);
+        try {
+          enableGyroForImmersion();
+          await environment.fadeToVideo(url, viewpointId);
+          await enterImmersion(vp.label);
+        } catch {
+          alert('Impossible de charger la vidéo 360°.\nVérifiez votre connexion et réessayez.');
+          exitImmersion();
+        } finally {
+          setImmersionLoading(false);
+        }
+      })();
       return;
     }
 
@@ -298,12 +320,38 @@ window.addEventListener('pointerdown', startLook);
 window.addEventListener('pointerup', stopLook);
 window.addEventListener('pointercancel', stopLook);
 
-window.addEventListener('pointermove', (e) => {
+window.addEventListener('pointermove', onLookMove);
+
+function onLookMove(e) {
   if (isPresenting || !drag || e.pointerId !== drag.id) return;
   rotateView((e.clientX - drag.x) * 0.12, (e.clientY - drag.y) * 0.12);
   drag.x = e.clientX;
   drag.y = e.clientY;
-});
+}
+
+canvas.addEventListener('touchstart', (e) => {
+  if (isPresenting || e.touches.length !== 1) return;
+  const t = e.touches[0];
+  if (isInteractiveTarget(document.elementFromPoint(t.clientX, t.clientY))) return;
+  if (!gyro.isListening()) requestGyroFromGesture({ quiet: true });
+  drag = { x: t.clientX, y: t.clientY, id: 'touch' };
+  document.body.classList.add('is-looking');
+}, { passive: true });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (isPresenting || !drag || drag.id !== 'touch' || e.touches.length !== 1) return;
+  const t = e.touches[0];
+  rotateView((t.clientX - drag.x) * 0.12, (t.clientY - drag.y) * 0.12);
+  drag.x = t.clientX;
+  drag.y = t.clientY;
+}, { passive: true });
+
+canvas.addEventListener('touchend', () => {
+  if (drag?.id === 'touch') {
+    drag = null;
+    document.body.classList.remove('is-looking');
+  }
+}, { passive: true });
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
