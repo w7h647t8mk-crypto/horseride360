@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 import { publicUrl } from './paths.js';
 import { loadTransparentLogo } from './textures.js';
-import { initUI } from './ui.js';
+import { initUI, VIEWPOINTS } from './ui.js';
+import { createEnvironment } from './environment.js';
 import { setupWebXR, launchVR } from './xr.js';
 import { runLoadingScreen, notifyAssetsReady } from './loader.js';
 import { initSounds, unlockSounds, playCue } from './sounds.js';
@@ -162,19 +163,7 @@ if (mobile && gyroBtn) {
   gyroBtn.addEventListener('click', requestGyroFromGesture);
 }
 
-const texLoader = new THREE.TextureLoader();
-texLoader.load(publicUrl('assets/panorama.png'), (tex) => {
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.mapping = THREE.EquirectangularReflectionMapping;
-  scene.background = tex;
-  scene.add(
-    new THREE.Mesh(
-      new THREE.SphereGeometry(50, 64, 64),
-      new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide })
-    )
-  );
-  notifyAssetsReady();
-});
+const environment = createEnvironment(scene, { onReady: notifyAssetsReady });
 
 applyCameraRotation();
 updateUiBillboard();
@@ -185,6 +174,8 @@ const ui = initUI({
   mobile,
   onViewpointChange: ({ viewpointId, label }) => {
     console.log(`[VR Show] ${label} (${viewpointId})`);
+    const videoUrl = VIEWPOINTS[viewpointId]?.video;
+    environment.setViewpoint(viewpointId, videoUrl);
   },
   onLaunchVR: (viewpointId) => {
     console.log(`[VR Show] Lancement VR — ${viewpointId}`);
@@ -264,6 +255,7 @@ window.addEventListener('resize', () => {
 });
 
 renderer.setAnimationLoop(() => {
+  environment.tick();
   if (!isPresenting) updateUiBillboard();
   renderer.render(scene, camera);
   if (!isPresenting) cssRenderer.render(scene, camera);
