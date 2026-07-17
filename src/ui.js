@@ -138,11 +138,7 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
       ui.classList.add('hidden');
     },
     show: () => {
-      ui.classList.remove('hidden', 'is-minified');
-    },
-    minify: () => {
-      cards.forEach(stopPreview);
-      ui.classList.add('is-minified');
+      ui.classList.remove('hidden', 'is-exiting');
     },
     selectViewpoint,
   };

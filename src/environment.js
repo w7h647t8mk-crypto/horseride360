@@ -2,16 +2,31 @@ import * as THREE from 'three';
 import { publicUrl } from './paths.js';
 
 const PANORAMA_URL = publicUrl('assets/panorama.png');
-const FADE_MS = 1600;
+const FADE_MS = 1400;
+const LOAD_TIMEOUT_MS = 45000;
 
-export function createEnvironment(scene, { onReady } = {}) {
+export function createEnvironment(scene, { onReady, videoEl } = {}) {
   let panoramaTexture = null;
-  let videoElement = null;
+  let videoElement = videoEl ?? null;
   let videoTexture = null;
   let panoramaSphere = null;
   let videoSphere = null;
   let fadeRaf = null;
   let activeViewpointId = null;
+
+  function getVideo() {
+    if (videoElement) return videoElement;
+    videoElement = document.createElement('video');
+    videoElement.loop = true;
+    videoElement.muted = true;
+    videoElement.playsInline = true;
+    videoElement.setAttribute('playsinline', '');
+    videoElement.setAttribute('webkit-playsinline', '');
+    videoElement.preload = 'auto';
+    videoElement.hidden = true;
+    document.body.appendChild(videoElement);
+    return videoElement;
+  }
 
   function createSphere(texture, opacity = 1) {
     const material = new THREE.MeshBasicMaterial({
@@ -46,11 +61,122 @@ export function createEnvironment(scene, { onReady } = {}) {
     videoSphere = null;
   }
 
+  function cancelFade() {
+    if (fadeRaf) cancelAnimationFrame(fadeRaf);
+    fadeRaf = null;
+  }
+
+  function waitForVideoReady(video, url) {
+    return new Promise((resolve, reject) => {
+      if (video.src !== url) {
+        video.src = url;
+        video.load();
+      }
+
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('timeout'));
+      }, LOAD_TIMEOUT_MS);
+
+      const tryResolve = () => {
+        cleanup();
+        resolve(video);
+      };
+
+      const onError = () => {
+        cleanup();
+        reject(new Error('load-error'));
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        video.removeEventListener('loadeddata', tryResolve);
+        video.removeEventListener('canplay', tryResolve);
+        video.removeEventListener('error', onError);
+      };
+
+      if (video.readyState >= 2) {
+        tryResolve();
+        return;
+      }
+
+      video.addEventListener('loadeddata', tryResolve, { once: true });
+      video.addEventListener('canplay', tryResolve, { once: true });
+      video.addEventListener('error', onError, { once: true });
+
+      video.play().catch(() => {});
+    });
+  }
+
+  /** À appeler dans le geste utilisateur (tap LANCER) — requis iOS. */
+  function primeVideo(url) {
+    const video = getVideo();
+    if (video.src !== url) {
+      video.src = url;
+      video.load();
+    }
+    return video.play();
+  }
+
+  function runCrossfade() {
+    return new Promise((resolve) => {
+      ensurePanoramaSphere();
+      if (panoramaSphere) {
+        panoramaSphere.material.transparent = true;
+        panoramaSphere.visible = true;
+        panoramaSphere.material.opacity = 1;
+      }
+
+      videoTexture?.dispose();
+      videoTexture = new THREE.VideoTexture(getVideo());
+      videoTexture.colorSpace = THREE.SRGBColorSpace;
+      videoTexture.minFilter = THREE.LinearFilter;
+      videoTexture.magFilter = THREE.LinearFilter;
+
+      disposeVideoSphere();
+      videoSphere = createSphere(videoTexture, 0);
+      videoSphere.material.transparent = true;
+      setBackgroundTexture(videoTexture);
+
+      const start = performance.now();
+      const animateFade = (now) => {
+        const t = Math.min(1, (now - start) / FADE_MS);
+        const eased = t * t * (3 - 2 * t);
+        if (panoramaSphere) panoramaSphere.material.opacity = 1 - eased;
+        if (videoSphere) videoSphere.material.opacity = eased;
+
+        if (t < 1) {
+          fadeRaf = requestAnimationFrame(animateFade);
+          return;
+        }
+
+        if (panoramaSphere) panoramaSphere.visible = false;
+        if (videoSphere) {
+          videoSphere.material.opacity = 1;
+          videoSphere.material.transparent = false;
+        }
+        fadeRaf = null;
+        resolve();
+      };
+      fadeRaf = requestAnimationFrame(animateFade);
+    });
+  }
+
+  async function fadeToVideo(url, viewpointId) {
+    cancelFade();
+    activeViewpointId = viewpointId;
+    await waitForVideoReady(getVideo(), url);
+    await getVideo().play();
+    await runCrossfade();
+  }
+
   function stopVideo() {
-    if (videoElement) {
-      videoElement.pause();
-      videoElement.removeAttribute('src');
-      videoElement.load();
+    cancelFade();
+    const video = videoElement;
+    if (video) {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
     }
     videoTexture?.dispose();
     videoTexture = null;
@@ -58,84 +184,11 @@ export function createEnvironment(scene, { onReady } = {}) {
     disposeVideoSphere();
     ensurePanoramaSphere();
     if (panoramaSphere) {
-      panoramaSphere.material.opacity = 1;
       panoramaSphere.visible = true;
+      panoramaSphere.material.opacity = 1;
+      panoramaSphere.material.transparent = false;
       setBackgroundTexture(panoramaTexture);
     }
-  }
-
-  function cancelFade() {
-    if (fadeRaf) cancelAnimationFrame(fadeRaf);
-    fadeRaf = null;
-  }
-
-  function fadeToVideo(url, viewpointId) {
-    cancelFade();
-
-    return new Promise((resolve) => {
-      activeViewpointId = viewpointId;
-      ensurePanoramaSphere();
-
-      if (!videoElement) {
-        videoElement = document.createElement('video');
-        videoElement.loop = true;
-        videoElement.muted = true;
-        videoElement.playsInline = true;
-        videoElement.setAttribute('playsinline', '');
-        videoElement.preload = 'auto';
-        videoElement.crossOrigin = 'anonymous';
-      }
-
-      videoElement.src = url;
-      videoElement.load();
-
-      const onCanPlay = () => {
-        videoElement.removeEventListener('canplay', onCanPlay);
-        videoElement.play().catch(() => {});
-
-        videoTexture?.dispose();
-        videoTexture = new THREE.VideoTexture(videoElement);
-        videoTexture.colorSpace = THREE.SRGBColorSpace;
-        videoTexture.minFilter = THREE.LinearFilter;
-        videoTexture.magFilter = THREE.LinearFilter;
-
-        disposeVideoSphere();
-        videoSphere = createSphere(videoTexture, 0);
-        setBackgroundTexture(videoTexture);
-
-        const start = performance.now();
-
-        const animateFade = (now) => {
-          const t = Math.min(1, (now - start) / FADE_MS);
-          const eased = t * t * (3 - 2 * t);
-
-          if (panoramaSphere) panoramaSphere.material.opacity = 1 - eased;
-          if (videoSphere) videoSphere.material.opacity = eased;
-
-          if (t < 1) {
-            fadeRaf = requestAnimationFrame(animateFade);
-            return;
-          }
-
-          if (panoramaSphere) {
-            panoramaSphere.visible = false;
-            panoramaSphere.material.opacity = 1;
-          }
-          if (videoSphere) {
-            videoSphere.material.opacity = 1;
-            videoSphere.material.depthWrite = true;
-            videoSphere.material.transparent = false;
-          }
-
-          fadeRaf = null;
-          resolve();
-        };
-
-        fadeRaf = requestAnimationFrame(animateFade);
-      };
-
-      videoElement.addEventListener('canplay', onCanPlay);
-    });
   }
 
   const texLoader = new THREE.TextureLoader();
@@ -146,6 +199,7 @@ export function createEnvironment(scene, { onReady } = {}) {
   });
 
   return {
+    primeVideo,
     fadeToVideo,
     stopVideo,
     tick() {

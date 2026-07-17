@@ -17,6 +17,9 @@ window.addEventListener('pointerdown', unlockSounds, { once: true });
 const canvas = document.getElementById('canvas');
 const uiEl = document.getElementById('ui');
 const gyroBtn = document.getElementById('gyro-btn');
+const immersionBar = document.getElementById('immersion-bar');
+const immersionLabel = document.getElementById('immersion-label');
+const immersionVideo = document.getElementById('immersion-video');
 const mobile = isMobileLayout();
 const MOBILE_PANEL_WIDTH = 1120;
 const MOBILE_TARGET_WIDTH_RATIO = 0.93;
@@ -31,7 +34,7 @@ function getMobileUiScale() {
   return worldWidth / MOBILE_PANEL_WIDTH;
 }
 
-const INTERACTIVE_SELECTOR = '.card, .bottom-bar, .chip, .launch-btn, .ui-logo, .gyro-btn, button, a, input, label';
+const INTERACTIVE_SELECTOR = '.card, .bottom-bar, .chip, .launch-btn, .ui-logo, .gyro-btn, .immersion-bar, .immersion-bar__btn, button, a, input, label';
 const UI_PANEL_Z = mobile ? -MOBILE_PANEL_DISTANCE : -3.2;
 const UI_PANEL_Y = mobile ? 1.48 : 1.52;
 const UI_SCALE = mobile ? getMobileUiScale() : 0.00172;
@@ -109,40 +112,34 @@ function rotateView(deltaLon, deltaLat) {
   setView(lon - deltaLon, lat + deltaLat);
 }
 
-let uiMinifyScale = null;
 let isImmersion = false;
 
-function getUiBaseScale() {
-  return mobile ? getMobileUiScale() : 0.00172;
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function minifyUiPanel() {
-  const base = getUiBaseScale();
-  const target = base * 0.38;
-  const fromY = UI_PANEL_Y;
-  const toY = UI_PANEL_Y + 0.22;
-  const start = performance.now();
-  const duration = 720;
+async function enterImmersion(label) {
+  isImmersion = true;
+  document.body.classList.add('in-immersion');
+  if (immersionLabel) immersionLabel.textContent = label;
+  immersionBar?.removeAttribute('hidden');
 
-  return new Promise((resolve) => {
-    function step(now) {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - (1 - t) ** 3;
-      const scale = base + (target - base) * eased;
-      uiMinifyScale = scale;
-      uiPanel.scale.setScalar(scale);
-      uiPanel.position.y = fromY + (toY - fromY) * eased;
-      if (t < 1) requestAnimationFrame(step);
-      else resolve();
-    }
-    requestAnimationFrame(step);
-  });
+  uiEl.classList.add('is-exiting');
+  await sleep(450);
+  ui.hide();
+  uiPanel.visible = false;
+  uiEl.classList.remove('is-exiting');
 }
 
-function restoreUiPanel() {
-  uiMinifyScale = null;
-  uiPanel.scale.setScalar(getUiBaseScale());
-  uiPanel.position.y = UI_PANEL_Y;
+async function exitImmersion() {
+  if (!isImmersion) return;
+  isImmersion = false;
+  document.body.classList.remove('in-immersion');
+  immersionBar?.setAttribute('hidden', '');
+  environment.stopVideo();
+  uiPanel.visible = true;
+  ui.show();
+  if (mobile && gyroBtn && !gyro.isListening()) gyroBtn.removeAttribute('hidden');
 }
 
 function updateUiBillboard() {
@@ -151,8 +148,7 @@ function updateUiBillboard() {
 
 function updateMobileUiScale() {
   if (!mobile || isImmersion) return;
-  const scale = getUiBaseScale();
-  uiPanel.scale.setScalar(uiMinifyScale ?? scale);
+  uiPanel.scale.setScalar(getMobileUiScale());
 }
 
 function updateGyroButton(active) {
@@ -178,6 +174,13 @@ const gyro = createGyroControls({
   onActiveChange: updateGyroButton,
 });
 
+function enableGyroForImmersion() {
+  if (gyro.isListening()) return;
+  gyro.enableFromGesture((ok) => {
+    if (ok) gyro.calibrateToView(lon, lat);
+  });
+}
+
 function requestGyroFromGesture({ quiet = false } = {}) {
   if (!quiet) playCue('info', { volume: 0.35 });
   gyro.enableFromGesture((ok, reason) => {
@@ -199,7 +202,10 @@ if (mobile && gyroBtn) {
   gyroBtn.addEventListener('click', requestGyroFromGesture);
 }
 
-const environment = createEnvironment(scene, { onReady: notifyAssetsReady });
+const environment = createEnvironment(scene, {
+  onReady: notifyAssetsReady,
+  videoEl: immersionVideo,
+});
 
 applyCameraRotation();
 updateUiBillboard();
@@ -211,17 +217,19 @@ const ui = initUI({
   onViewpointChange: ({ viewpointId, label }) => {
     console.log(`[VR Show] ${label} (${viewpointId})`);
   },
-  onLaunchVR: async (viewpointId) => {
+  onLaunchVR: (viewpointId) => {
     const vp = VIEWPOINTS[viewpointId];
     console.log(`[VR Show] Lancement — ${vp?.label ?? viewpointId}`);
 
     if (vp?.immersion) {
-      isImmersion = true;
-      document.body.classList.add('in-immersion');
-      gyroBtn?.setAttribute('hidden', '');
+      environment.primeVideo(vp.immersion).catch(() => {});
+      enableGyroForImmersion();
 
-      ui.minify();
-      await Promise.all([minifyUiPanel(), environment.fadeToVideo(vp.immersion, viewpointId)]);
+      enterImmersion(vp.label);
+      environment.fadeToVideo(vp.immersion, viewpointId).catch(() => {
+        alert('Impossible de charger la vidéo 360°.\nVérifiez votre connexion et réessayez.');
+        exitImmersion();
+      });
       return;
     }
 
@@ -261,20 +269,15 @@ setupWebXR(renderer, {
   },
 });
 
-function exitImmersion() {
-  if (!isImmersion) return;
-  isImmersion = false;
-  document.body.classList.remove('in-immersion');
-  environment.stopVideo();
-  restoreUiPanel();
-  ui.show();
-  if (mobile && gyroBtn && !gyro.isListening()) gyroBtn.removeAttribute('hidden');
-}
+document.getElementById('exit-immersion')?.addEventListener('click', () => {
+  playCue('back');
+  exitImmersion();
+});
 
 function startLook(e) {
-  if (isPresenting || isImmersion || isInteractiveTarget(e.target)) return;
+  if (isPresenting || isInteractiveTarget(e.target)) return;
 
-  if (mobile && !gyro.isListening()) {
+  if (!gyro.isListening()) {
     requestGyroFromGesture({ quiet: true });
   }
 
@@ -312,9 +315,9 @@ window.addEventListener('resize', () => {
 
 renderer.setAnimationLoop(() => {
   environment.tick();
-  if (!isPresenting) updateUiBillboard();
+  if (!isPresenting && !isImmersion) updateUiBillboard();
   renderer.render(scene, camera);
-  if (!isPresenting) cssRenderer.render(scene, camera);
+  if (!isPresenting && !isImmersion) cssRenderer.render(scene, camera);
 });
 
 window.VRShow = {
@@ -324,5 +327,6 @@ window.VRShow = {
   rotateView,
   playCue,
   enableGyro: requestGyroFromGesture,
+  exitImmersion,
   onViewpointChange: (cb) => window.addEventListener('vrshow:viewpoint', (e) => cb(e.detail)),
 };

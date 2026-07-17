@@ -20,6 +20,12 @@
 
   <canvas id="canvas"></canvas>
   <div id="env-overlay" aria-hidden="true"></div>
+  <video id="immersion-video" playsinline webkit-playsinline muted loop preload="auto" hidden></video>
+  <div id="immersion-bar" class="immersion-bar" hidden>
+    <span id="immersion-label" class="immersion-bar__label">Immersion</span>
+    <button type="button" id="exit-immersion" class="immersion-bar__btn">← Menu</button>
+  </div>
+
   <button id="gyro-btn" class="gyro-btn" type="button" hidden>
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2 2"/><path d="M4 12h2M18 12h2M12 4v2M12 18v2"/></svg>
     Activer le gyroscope
