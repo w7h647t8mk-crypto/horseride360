@@ -21,7 +21,11 @@ const mobile = isMobileLayout();
 const INTERACTIVE_SELECTOR = '.card, .bottom-bar, .chip, .launch-btn, .ui-logo, .gyro-btn, button, a, input, label';
 const UI_PANEL_Z = mobile ? -2.75 : -3.2;
 const UI_PANEL_Y = mobile ? 1.48 : 1.52;
-const UI_SCALE = mobile ? 0.001536 : 0.00172;
+const UI_SCALE = mobile ? 0.00185 : 0.00172;
+const UI_PANEL_DIST = Math.abs(UI_PANEL_Z);
+
+const _cameraDir = new THREE.Vector3();
+const _panelPos = new THREE.Vector3();
 
 if (mobile) {
   document.body.classList.add('is-mobile');
@@ -97,6 +101,12 @@ function rotateView(deltaLon, deltaLat) {
 }
 
 function updateUiBillboard() {
+  if (mobile) {
+    camera.getWorldDirection(_cameraDir);
+    _panelPos.copy(camera.position).addScaledVector(_cameraDir, UI_PANEL_DIST);
+    _panelPos.y = camera.position.y - 0.06;
+    uiPanel.position.copy(_panelPos);
+  }
   uiPanel.lookAt(camera.position);
 }
 
