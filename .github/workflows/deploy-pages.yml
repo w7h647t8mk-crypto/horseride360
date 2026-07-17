@@ -27,6 +27,8 @@ jobs:
 
       - run: npm ci
       - run: npm run build:pages
+        env:
+          VITE_VIDEO_BASE_URL: ${{ vars.VITE_VIDEO_BASE_URL }}
 
       - uses: actions/upload-pages-artifact@v3
         with:

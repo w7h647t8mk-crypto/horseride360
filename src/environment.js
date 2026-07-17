@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { publicUrl } from './paths.js';
+import { publicUrl, applyVideoCrossOrigin } from './paths.js';
 
 const PANORAMA_URL = publicUrl('assets/panorama.png');
 const FADE_MS = 1400;
@@ -89,14 +89,31 @@ export function createEnvironment(scene, { onReady, videoEl, mobile = false } = 
 
   function ensurePlaying(video) {
     if (!video.paused) return Promise.resolve();
-    return video.play().catch(() => {});
+    return video.play().catch(() => video.play().catch(() => {}));
+  }
+
+  function prepareVideoElement(video) {
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.setAttribute('x-webkit-airplay', 'deny');
+    video.removeAttribute('hidden');
+  }
+
+  function setVideoSource(video, url) {
+    prepareVideoElement(video);
+    applyVideoCrossOrigin(video, url);
+    if (videoMatchesUrl(video, url)) return;
+    video.src = url;
+    video.load();
   }
 
   function waitForVideoReady(video, url) {
     return new Promise((resolve, reject) => {
       if (!videoMatchesUrl(video, url)) {
-        video.src = url;
-        video.load();
+        setVideoSource(video, url);
       }
 
       const timeout = setTimeout(() => {
@@ -135,15 +152,19 @@ export function createEnvironment(scene, { onReady, videoEl, mobile = false } = 
     });
   }
 
+  /** Précharge sans play (mobile : au changement de vue). */
+  function preloadVideo(url) {
+    const video = getVideo();
+    video.pause();
+    setVideoSource(video, url);
+  }
+
   /** Appeler en premier dans le handler tap/clic (iOS). */
   function primeVideo(url) {
     const video = getVideo();
     playUnlocked = true;
-    if (!videoMatchesUrl(video, url)) {
-      video.src = url;
-      video.load();
-    }
-    return video.play();
+    setVideoSource(video, url);
+    return video.play().catch(() => undefined);
   }
 
   function runCrossfade() {
@@ -231,6 +252,7 @@ export function createEnvironment(scene, { onReady, videoEl, mobile = false } = 
 
   return {
     primeVideo,
+    preloadVideo,
     fadeToVideo,
     stopVideo,
     tick() {

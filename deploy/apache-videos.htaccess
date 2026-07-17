@@ -1,0 +1,10 @@
+# Apache — gm-drone.fr
+# Autorise GitHub Pages à lire la vidéo dans WebGL (VideoTexture)
+<IfModule mod_headers.c>
+  <FilesMatch "\.(mp4|webm)$">
+    Header set Access-Control-Allow-Origin "https://w7h647t8mk-crypto.github.io"
+    Header set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+    Header set Access-Control-Allow-Headers "Range"
+    Header set Accept-Ranges "bytes"
+  </FilesMatch>
+</IfModule>

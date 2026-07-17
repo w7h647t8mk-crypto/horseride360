@@ -1,22 +1,24 @@
 import { playCue, setSoundEnabled, isSoundEnabled } from './sounds.js';
-import { publicUrl } from './paths.js';
+import { applyVideoCrossOrigin, videoUrl, REMOTE_VIDEOS } from './paths.js';
 
 export const VIEWPOINTS = {
   'casque-pov': {
     id: 'casque-pov',
     label: 'POV Cavalier',
-    preview: publicUrl('assets/videos/casque-pov.mp4'),
+    preview: videoUrl('casque-pov-preview.mp4'),
+    immersion: REMOTE_VIDEOS['casque-pov'],
   },
   perche: {
     id: 'perche',
     label: 'Vue Perche',
-    preview: publicUrl('assets/videos/perche-preview.mp4'),
-    immersion: publicUrl('assets/videos/perche.mp4'),
+    preview: videoUrl('perche-preview.mp4'),
+    immersion: REMOTE_VIDEOS.perche,
   },
   drone: {
     id: 'drone',
     label: 'Vue Drone',
-    preview: publicUrl('assets/videos/drone.mp4'),
+    preview: videoUrl('drone.mp4'),
+    immersion: REMOTE_VIDEOS.drone,
   },
 };
 
@@ -42,6 +44,14 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
 
   let selectedId = 'casque-pov';
   let hoverSoundId = null;
+
+  cards.forEach((card) => {
+    const vp = VIEWPOINTS[card.dataset.id];
+    const video = card.querySelector('.card__video');
+    if (!video || !vp?.preview) return;
+    video.src = vp.preview;
+    applyVideoCrossOrigin(video, vp.preview);
+  });
 
   function selectViewpoint(id) {
     if (!VIEWPOINTS[id]) return;
@@ -86,9 +96,15 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
     }
   });
 
+  function stopAllPreviews() {
+    cards.forEach(stopPreview);
+  }
+
   launchBtn.addEventListener('click', () => {
-    playCue('start');
+    // iOS : libérer le décodeur vidéo + lancer play() avant tout son (geste utilisateur).
+    stopAllPreviews();
     onLaunchVR?.(selectedId);
+    playCue('start');
   });
 
   document.getElementById('btn-infos')?.addEventListener('click', () => {
@@ -133,8 +149,9 @@ export function initUI({ mobile = false, onViewpointChange, onLaunchVR, onToggle
 
   return {
     getSelectedViewpoint: () => selectedId,
+    stopAllPreviews,
     hide: () => {
-      cards.forEach(stopPreview);
+      stopAllPreviews();
       ui.classList.add('hidden');
     },
     show: () => {

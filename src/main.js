@@ -23,8 +23,21 @@ const immersionVideo = document.getElementById('immersion-video');
 const immersionLoading = document.getElementById('immersion-loading');
 const mobile = isMobileLayout();
 
-if (mobile && VIEWPOINTS.perche) {
-  VIEWPOINTS.perche.immersion = publicUrl('assets/videos/perche-mobile.mp4');
+const DESKTOP_IMMERSION = {};
+for (const [id, vp] of Object.entries(VIEWPOINTS)) {
+  if (vp.immersion) DESKTOP_IMMERSION[id] = vp.immersion;
+}
+
+let environment = null;
+
+function preloadImmersionForViewpoint(viewpointId) {
+  if (!mobile || !environment) return;
+  const url = VIEWPOINTS[viewpointId]?.immersion;
+  if (url) environment.preloadVideo(url);
+}
+
+async function resolveMobileImmersionUrls() {
+  preloadImmersionForViewpoint('casque-pov');
 }
 
 function setImmersionLoading(visible) {
@@ -215,7 +228,7 @@ if (mobile && gyroBtn) {
   gyroBtn.addEventListener('click', requestGyroFromGesture);
 }
 
-const environment = createEnvironment(scene, {
+environment = createEnvironment(scene, {
   onReady: notifyAssetsReady,
   videoEl: immersionVideo,
   mobile,
@@ -226,30 +239,59 @@ updateUiBillboard();
 
 runLoadingScreen();
 
+if (mobile) {
+  void resolveMobileImmersionUrls();
+} else {
+  preloadImmersionForViewpoint('casque-pov');
+}
+
+async function startImmersion(viewpointId, vp, url) {
+  setImmersionLoading(true);
+  try {
+    await environment.fadeToVideo(url, viewpointId);
+    await enterImmersion(vp.label);
+    enableGyroForImmersion();
+  } catch (err) {
+    console.warn('[VR Show] immersion failed', url, err);
+    throw err;
+  } finally {
+    setImmersionLoading(false);
+  }
+}
+
 const ui = initUI({
   mobile,
   onViewpointChange: ({ viewpointId, label }) => {
     console.log(`[VR Show] ${label} (${viewpointId})`);
+    preloadImmersionForViewpoint(viewpointId);
   },
   onLaunchVR: (viewpointId) => {
     const vp = VIEWPOINTS[viewpointId];
     console.log(`[VR Show] Lancement — ${vp?.label ?? viewpointId}`);
 
     if (vp?.immersion) {
+      ui.stopAllPreviews?.();
       const url = vp.immersion;
       environment.primeVideo(url);
 
       void (async () => {
-        setImmersionLoading(true);
         try {
-          enableGyroForImmersion();
-          await environment.fadeToVideo(url, viewpointId);
-          await enterImmersion(vp.label);
+          await startImmersion(viewpointId, vp, url);
         } catch {
+          const fallback = mobile ? DESKTOP_IMMERSION[viewpointId] : null;
+          if (fallback && fallback !== url) {
+            try {
+              environment.preloadVideo(fallback);
+              await environment.fadeToVideo(fallback, viewpointId);
+              await enterImmersion(vp.label);
+              enableGyroForImmersion();
+              return;
+            } catch (fallbackErr) {
+              console.warn('[VR Show] fallback immersion failed', fallback, fallbackErr);
+            }
+          }
           alert('Impossible de charger la vidéo 360°.\nVérifiez votre connexion et réessayez.');
           exitImmersion();
-        } finally {
-          setImmersionLoading(false);
         }
       })();
       return;
